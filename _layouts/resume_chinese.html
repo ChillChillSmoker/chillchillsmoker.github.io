@@ -143,57 +143,101 @@
           <img src="images/SCAU_icon.png" alt="图9" style="width: 100%; border-radius: 8px;">
         </div>
       </section>
-
-      <!-- 悬浮留言板 -->
+      
+      <!-- 悬浮留言按钮 -->
       <div id="feedback-btn" style="position: fixed; bottom: 30px; right: 30px; z-index: 9999;">
-      <button onclick="toggleForm()" style="background-color: #003366; color: white; border: none; padding: 12px 16px; border-radius: 6px; font-weight: bold;">
-      留言
-      </button>
+        <button onclick="toggleForm()" style="background-color: #003366; color: white; border: none; padding: 12px 16px; border-radius: 6px; font-weight: bold;">
+          留言
+        </button>
       </div>
       
-      <div id="feedback-form" style="display: none; position: fixed; bottom: 90px; right: 30px; z-index: 9999; width: 320px; background: white; padding: 15px; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">
-      <h3 style="margin-top: 0;">留言板</h3>
-      <form onsubmit="addMessage(event)">
-      <input type="text" id="username" placeholder="您的姓名" required style="width: 100%; padding: 6px; margin-bottom: 6px;">
-      <textarea id="usermsg" placeholder="请输入留言..." required style="width: 100%; padding: 6px; height: 60px; margin-bottom: 6px;"></textarea>
-      <button type="submit" style="background-color: #003366; color: white; border: none; padding: 6px 12px; border-radius: 4px;">提交</button>
-      </form>
-      <div id="messages" style="max-height: 150px; overflow-y: auto; margin-top: 10px; border-top: 1px solid #ccc; padding-top: 10px; font-size: 0.9em;">
+      <!-- 留言输入窗口 -->
+      <div id="feedback-form" style="display: none; position: fixed; bottom: 90px; right: 30px; z-index: 9999; width: 300px; background: rgba(255,255,255,0.95); padding: 15px; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">
+        <form onsubmit="addMessage(event)">
+          <textarea id="usermsg" placeholder="请输入留言..." required style="width: 100%; padding: 6px; height: 60px; margin-bottom: 6px;"></textarea>
+          <button type="submit" style="background-color: #003366; color: white; border: none; padding: 6px 12px; border-radius: 4px;">提交</button>
+        </form>
       </div>
+      
+      <!-- 飘出留言区域 -->
+      <div id="floating-messages" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        pointer-events: none;
+        z-index: 9998;
+        font-size: 16px;
+        font-weight: bold;
+        color: #333;
+      ">
       </div>
       
       <script>
-      function toggleForm() {
-      var form = document.getElementById("feedback-form");
-      form.style.display = (form.style.display === "none") ? "block" : "none";
-      }
+        // 控制窗口显示
+        function toggleForm() {
+          const form = document.getElementById("feedback-form");
+          form.style.display = (form.style.display === "none") ? "block" : "none";
+        }
       
-      function addMessage(event) {
-      event.preventDefault();
-      const name = document.getElementById("username").value.trim();
-      const msg = document.getElementById("usermsg").value.trim();
+        // 添加留言并飘出
+        function addMessage(event) {
+          event.preventDefault();
+          const msg = document.getElementById("usermsg").value.trim();
+          if (msg) {
+            saveMessage(msg);
+            showFloatingMessage(msg);
+            document.getElementById("usermsg").value = "";
+            document.getElementById("feedback-form").style.display = "none";
+          }
+        }
       
-      if (name && msg) {
-      const container = document.getElementById("messages");
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        // 存入 localStorage，保留20条
+        function saveMessage(msg) {
+          let messages = JSON.parse(localStorage.getItem("floatingMessages") || "[]");
+          messages.push(msg);
+          if (messages.length > 20) {
+            messages = messages.slice(messages.length - 20);
+          }
+          localStorage.setItem("floatingMessages", JSON.stringify(messages));
+        }
       
-      const entry = document.createElement("div");
-      entry.innerHTML = `<strong>${name}</strong> <span style="color:gray;">[${timeStr}]</span><br>${msg}`;
-      entry.style.marginBottom = "10px";
-      container.appendChild(entry);
+        // 显示留言动画
+        function showFloatingMessage(msg) {
+          const container = document.getElementById("floating-messages");
+          const msgDiv = document.createElement("div");
+          msgDiv.innerText = msg;
+          msgDiv.style.position = "absolute";
+          msgDiv.style.left = Math.random() * 70 + 10 + "%";
+          msgDiv.style.top = "-30px";
+          msgDiv.style.opacity = "0.85";
+          msgDiv.style.background = "rgba(255,255,255,0.6)";
+          msgDiv.style.padding = "6px 12px";
+          msgDiv.style.borderRadius = "6px";
+          msgDiv.style.transition = "transform 12s linear, opacity 12s linear";
+          msgDiv.style.transform = "translateY(100vh)";
+          container.appendChild(msgDiv);
       
-      // 限制最多 20 条
-      const messages = container.querySelectorAll("div");
-      if (messages.length > 20) {
-      container.removeChild(messages[0]);
-      }
+          // 移除 DOM
+          setTimeout(() => {
+            container.removeChild(msgDiv);
+          }, 12000);
+        }
       
-      // 清空表单
-      document.getElementById("username").value = "";
-      document.getElementById("usermsg").value = "";
-      }
-      }
+        // 页面加载时自动循环显示历史留言
+        function loopStoredMessages() {
+          const stored = JSON.parse(localStorage.getItem("floatingMessages") || "[]");
+          let i = 0;
+          setInterval(() => {
+            if (stored.length > 0) {
+              showFloatingMessage(stored[i % stored.length]);
+              i++;
+            }
+          }, 3000); // 每 3 秒飘一个
+        }
+      
+        // 启动循环
+        window.onload = loopStoredMessages;
       </script>
 
       <footer class="page-footer">
